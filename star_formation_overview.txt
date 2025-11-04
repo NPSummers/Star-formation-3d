@@ -1,0 +1,37 @@
+Star Formation Simulation Overview
+
+What the simulation shows
+- Gravitational collapse and clustering of a 2D gas distribution
+- Hydrodynamic response of gas via SPH (pressure, limited viscosity)
+- Formation of sink particles at high-density bound regions (proto-stars)
+- Gas accretion onto sinks and sink–sink merging
+- Global self-gravity approximated with a Barnes–Hut tree (fast N-body)
+
+Key formulas used
+- Gravity (softened): a = G M r / (|r|^2 + ε^2)^{3/2}
+- Barnes–Hut opening: use cell COM when (cell size / distance) < θ
+- SPH kernel (2D cubic spline, σ = 10/(7πh^2)):
+  W(q) = σ[1 − 1.5 q^2 + 0.75 q^3] (0≤q<1),  σ·0.25(2−q)^3 (1≤q<2), 0 otherwise
+- Pressure (ideal gas): P = (γ − 1) ρ u
+- Pressure acceleration (symmetric SPH):
+  a_i = − Σ_j m_j (P_i/ρ_i^2 + P_j/ρ_j^2) ∇W_ij
+- Artificial viscosity (Monaghan-like for μ<0):
+  Π_ij = [−ν μ / (r^2 + ε_v h^2)] (c_i + c_j)/2;  a_visc = − m_j Π_ij (∇W_ij)/(ρ_i ρ_j)
+- Internal energy update (PdV + linear cooling):
+  du/dt = −(P/ρ) ∇·v  −  λ (u − u_min)
+- Timestep limits:
+  dt_CFL = C h / (c_s + |v|),  c_s^2 = γ(γ−1)u;  dt_acc ∝ √(h/|a|)
+- Boundness criterion for sink creation:
+  E_kin + α E_th < |E_grav|
+
+What’s not included
+- Magnetic fields and MHD effects
+- Radiative transfer, heating/cooling balance 
+- Stellar winds, ionization, radiation pressure, supernovae
+- Chemistry, molecular cooling, dust physics, opacity/self-shielding
+- Protostellar evolution, accretion luminosity, jets/outflows
+- Turbulence driving; initial velocities are simple and optional
+- 3D dynamics 
+- Realistic equation of state or cooling curve; no sink accretion disks
+- Self-consistent angular momentum transport and fragmentation at disk scales
+
