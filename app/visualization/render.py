@@ -189,17 +189,4 @@ def draw(sim: Simulation, screen: pygame.Surface, font: pygame.font.Font | None,
     for s in sim.sinks:
         x, y = world_to_screen(s.x, s.y, center, zoom)
         pygame.draw.circle(screen, C.STAR_COLOR, (x, y), C.STAR_DRAW_SIZE)
-    if show_info and font is not None:
-        field_type = "density" if C.HEATMAP_SHOW_DENSITY else "temperature"
-        info_lines = [
-            f"t={sim.time:.3f}  N_gas={sim.N}  N_star={len(sim.sinks)}",
-            f"dt={sim.dt:.4g}  h={sim.h:.3f}  theta={sim.theta:.2f}",
-            f"Heatmap: {'ON' if show_heatmap else 'OFF'} ({field_type}, {C.HEATMAP_COLORMAP})",
-            "Controls: Space=Pause, R=Reset, G=Grid, I=Info, H=Heatmap, S=Screenshot, Wheel=Zoom, Drag=Pan",
-        ]
-        y0 = 8
-        for line in info_lines:
-            text_surf = font.render(line, True, C.TEXT_COLOR)
-            screen.blit(text_surf, (8, y0))
-            y0 += 20
 

@@ -5,6 +5,7 @@ import sys
 import time
 
 import pygame
+import secrets
 
 from app.config import settings as C
 from app.physics.engine import Simulation
@@ -27,7 +28,7 @@ def run() -> None:
 
     os.makedirs(C.SCREENSHOT_DIR, exist_ok=True)
 
-    sim = Simulation()
+    sim = Simulation(seed=secrets.randbits(32))
 
     paused = C.PAUSED_AT_START
     show_grid = False
@@ -43,6 +44,7 @@ def run() -> None:
 
     last_fps_stamp = time.time()
     fps = 0.0
+    last_reset_time = time.time()
 
     running = True
     while running:
@@ -55,7 +57,8 @@ def run() -> None:
                 elif event.key == pygame.K_SPACE:
                     paused = not paused
                 elif event.key == pygame.K_r:
-                    sim = Simulation()
+                    sim = Simulation(seed=secrets.randbits(32))
+                    last_reset_time = time.time()
                 elif event.key == pygame.K_g:
                     show_grid = not show_grid
                 elif event.key == pygame.K_i:
@@ -94,6 +97,10 @@ def run() -> None:
 
         clock.tick(C.MAX_FPS)
         now = time.time()
+        # Auto-reset with a new seed every 60 seconds
+        if now - last_reset_time >= 60.0:
+            sim = Simulation(seed=secrets.randbits(32))
+            last_reset_time = now
         if now - last_fps_stamp > 0.25:
             fps = clock.get_fps()
             last_fps_stamp = now

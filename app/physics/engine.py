@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import List, Tuple
 
 import numpy as np
+import secrets
 
 from app.spatial.quadtree import BarnesHut, Body
 from app.config import settings as C
@@ -96,9 +97,13 @@ def cubic_spline_gradient(dx: float, dy: float, h: float) -> Tuple[float, float]
 
 
 class Simulation:
-    def __init__(self) -> None:
-        np.random.seed(C.SEED)
-        random.seed(C.SEED)
+    def __init__(self, seed: int | None = None) -> None:
+        # Choose a random 32-bit seed if none provided; clamp to NumPy range
+        if seed is None:
+            seed = secrets.randbits(32)
+        self.seed = int(seed) & 0xFFFFFFFF
+        np.random.seed(self.seed)
+        random.seed(self.seed)
 
         self.N = C.NUM_GAS_PARTICLES
         self.mass = C.GAS_PARTICLE_MASS
@@ -299,23 +304,7 @@ class Simulation:
                 s.y += dt * s.vy
 
     def _handle_boundaries(self) -> None:
-        for i in range(self.N):
-            for k in (0, 1):
-                if self.gas.pos[i, k] < -C.BOX_SIZE:
-                    self.gas.pos[i, k] = -C.BOX_SIZE
-                    self.gas.vel[i, k] *= -0.5
-                elif self.gas.pos[i, k] > C.BOX_SIZE:
-                    self.gas.pos[i, k] = C.BOX_SIZE
-                    self.gas.vel[i, k] *= -0.5
-        for s in self.sinks:
-            if s.x < -C.BOX_SIZE:
-                s.x = -C.BOX_SIZE; s.vx *= -0.5
-            if s.x > C.BOX_SIZE:
-                s.x = C.BOX_SIZE; s.vx *= -0.5
-            if s.y < -C.BOX_SIZE:
-                s.y = -C.BOX_SIZE; s.vy *= -0.5
-            if s.y > C.BOX_SIZE:
-                s.y = C.BOX_SIZE; s.vy *= -0.5
+        return
 
     def _star_formation_and_accretion(self) -> None:
         created: List[int] = []
