@@ -116,3 +116,12 @@ if __name__ == "__main__":
         pygame.quit()
         sys.exit(0)
 
+
+# Expose a WSGI 'app' for platforms that mistakenly import this file as a Serverless Function
+try:
+    # Delegate to the Flask app used for web/serverless mode
+    from app.web import app as _flask_app  # type: ignore
+    app = _flask_app  # type: ignore
+except Exception:
+    # If Flask import fails locally, leave no-op placeholder
+    app = None  # type: ignore
