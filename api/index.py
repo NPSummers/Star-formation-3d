@@ -5,9 +5,11 @@ os.environ.setdefault("SERVERLESS", "1")
 
 from app.web import app as flask_app  # noqa: E402
 
+# Export a WSGI 'app' for Vercel Python runtime
+app = flask_app
 
+# Optional explicit handler (some runtimes accept this too)
 def handler(environ, start_response):
-    # Flask app is a WSGI callable
-    return flask_app(environ, start_response)
+    return app(environ, start_response)
 
 
