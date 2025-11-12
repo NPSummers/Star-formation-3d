@@ -18,11 +18,28 @@ from app.visualization.render import draw
 # Ensure SDL doesn't try to open a desktop window
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
+# Detect serverless platform (e.g., Vercel)
+SERVERLESS = bool(os.environ.get("SERVERLESS") or os.environ.get("VERCEL"))
+
 app = Flask(__name__)
 
 _frame_lock = threading.Lock()
 _latest_frame_jpeg: Optional[bytes] = None
 _running = True
+
+
+# Serverless-state (advanced per request to avoid background threads)
+_sl_screen: Optional[pygame.Surface] = None
+_sl_font: Optional[pygame.font.Font] = None
+_sl_sim: Optional[Simulation] = None
+_sl_center = (0.0, 0.0)
+_sl_zoom = C.WINDOW_HEIGHT / (2.4 * C.BOX_SIZE)
+_sl_show_grid = False
+_sl_show_info = True
+_sl_show_heatmap = C.HEATMAP_ENABLED
+_sl_last_tick = time.time()
+_sl_last_reset_time = time.time()
+_sl_target_fps = min(30, C.MAX_FPS)
 
 
 def _surface_to_jpeg_bytes(surface: pygame.Surface, quality: int = 80) -> bytes:
@@ -85,6 +102,40 @@ def _sim_loop() -> None:
             last_reset_time = now
 
     pygame.quit()
+
+
+def _ensure_serverless_state() -> None:
+    global _sl_screen, _sl_font, _sl_sim
+    if _sl_screen is None:
+        pygame.init()
+        _sl_screen = pygame.Surface((C.WINDOW_WIDTH, C.WINDOW_HEIGHT))
+    if _sl_font is None:
+        try:
+            _sl_font = pygame.font.SysFont("Menlo,Consolas,Monaco,monospace", 16)
+        except (NotImplementedError, AttributeError):
+            try:
+                _sl_font = pygame.font.Font(None, 16)
+            except Exception:
+                _sl_font = None
+    if _sl_sim is None:
+        _sl_sim = Simulation(seed=secrets.randbits(32))
+
+
+def _serverless_step_and_render() -> bytes:
+    global _sl_last_tick, _sl_last_reset_time, _sl_sim
+    _ensure_serverless_state()
+    assert _sl_screen is not None
+    now = time.time()
+    elapsed = max(0.0, now - _sl_last_tick)
+    steps = min(10, max(1, int(elapsed * _sl_target_fps)))
+    for _ in range(steps):
+        _sl_sim.step()  # type: ignore[union-attr]
+    _sl_last_tick = now
+    if now - _sl_last_reset_time >= 60.0:
+        _sl_sim = Simulation(seed=secrets.randbits(32))
+        _sl_last_reset_time = now
+    draw(_sl_sim, _sl_screen, _sl_font, _sl_center, _sl_zoom, _sl_show_grid, _sl_show_info, _sl_show_heatmap)  # type: ignore[arg-type]
+    return _surface_to_jpeg_bytes(_sl_screen, quality=80)
 
 
 @app.route("/")
@@ -194,6 +245,15 @@ def index() -> str:
 
 @app.route("/frame.jpg")
 def frame_jpg() -> Response:
+    if SERVERLESS:
+        try:
+            data = _serverless_step_and_render()
+            resp = make_response(data)
+            resp.headers["Content-Type"] = "image/jpeg"
+            resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            return resp
+        except Exception:
+            return Response(status=503)
     # If the simulation hasn't produced a frame yet, wait briefly
     deadline = time.time() + 2.0
     while True:
